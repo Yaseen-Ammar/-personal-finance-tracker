@@ -1,0 +1,130 @@
+{% extends "app_base.html" %}
+{% from "_macros.html" import stat_card, change_note, year_picker, share_bar, balance %}
+{% block title %}Analytics{% endblock %}
+
+{% block content %}
+{% set totals = analytics.totals %}
+{% set has_data = totals.count > 0 %}
+<div class="page-head">
+  <div>
+    <h1 class="page-title">Analytics</h1>
+    <p class="page-sub">Trends for {{ analytics.year }}. Transfers between your accounts are not counted.</p>
+  </div>
+  {{ year_picker(analytics.year, years, 'analytics.index') }}
+</div>
+
+<div class="stat-grid">
+  {% call stat_card('Income · ' ~ analytics.year, totals.income|currency, 'good' if totals.income > 0 else '') %}
+    {{ totals.count }} transaction{{ '' if totals.count == 1 else 's' }} in the year
+  {% endcall %}
+  {% call stat_card('Expenses · ' ~ analytics.year, totals.expenses|currency) %}
+    {% if analytics.busiest_spending_month %}Highest: {{ analytics.busiest_spending_month.month.label }} ({{ analytics.busiest_spending_month.expenses|currency }}){% else %}No expenses recorded{% endif %}
+  {% endcall %}
+  {% call stat_card('Net cash flow', totals.net|currency, 'bad' if totals.net < 0 else ('good' if totals.net > 0 else '')) %}
+    Income minus expenses
+  {% endcall %}
+  {% call stat_card('Savings rate', (totals.savings_rate ~ '%') if totals.savings_rate is not none else '—') %}
+    {% if totals.savings_rate is none %}Needs some income to calculate{% else %}Share of income not spent{% endif %}
+  {% endcall %}
+</div>
+
+{% if not has_data %}
+  <section class="surface onboarding">
+    <h2 class="onboarding-title">No activity in {{ analytics.year }}</h2>
+    <p class="text-muted mb-3">Pick another year above, or record some transactions to see trends.</p>
+    <a class="btn btn-brand" href="{{ url_for('transactions.new') }}">Add a transaction</a>
+  </section>
+{% else %}
+<div class="row g-4 mt-0">
+  <div class="col-xl-8">
+    <section class="surface chart-card" aria-labelledby="a-ie">
+      <div class="surface-head"><h2 id="a-ie" class="surface-title">Income vs expenses by month</h2></div>
+      <div class="chart-body"><div class="chart-box"><canvas data-chart="incomeExpense" role="img"
+           aria-label="Bar chart of income and expenses for each month of {{ analytics.year }}. The same figures are in the table further down."></canvas></div></div>
+    </section>
+  </div>
+  <div class="col-xl-4">
+    <section class="surface chart-card h-100" aria-labelledby="a-cat">
+      <div class="surface-head"><h2 id="a-cat" class="surface-title">Spending by category</h2></div>
+      <div class="chart-body">
+        {% if analytics.spending %}
+        <div class="chart-box chart-box-sm"><canvas data-chart="category" role="img"
+             aria-label="Doughnut chart of {{ analytics.year }} spending by category. The same figures are listed in the highest-spending table."></canvas></div>
+        {% else %}<div class="empty-state empty-state-sm"><p class="mb-0">No expenses recorded in {{ analytics.year }}.</p></div>{% endif %}
+      </div>
+    </section>
+  </div>
+</div>
+
+<div class="row g-4 mt-0">
+  <div class="col-xl-7">
+    <section class="surface chart-card" aria-labelledby="a-net">
+      <div class="surface-head"><h2 id="a-net" class="surface-title">Cash flow trend</h2></div>
+      <div class="chart-body"><div class="chart-box"><canvas data-chart="netFlow" data-source="incomeExpense" role="img"
+           aria-label="Line chart of net cash flow per month and the running total through {{ analytics.year }}. The figures are in the month-by-month table."></canvas></div></div>
+    </section>
+  </div>
+  <div class="col-xl-5">
+    <section class="surface" aria-labelledby="a-top">
+      <div class="surface-head"><h2 id="a-top" class="surface-title">Highest-spending categories</h2></div>
+      {% if analytics.spending %}
+      <ol class="rank-list rank-list-numbered">
+        {% for c in analytics.spending[:5] %}
+        <li>
+          <div class="rank-row"><span class="rank-name">{{ c.name }}</span><span class="amt">{{ c.total|currency }}</span></div>
+          {{ share_bar(c.share) }}
+          <span class="rank-share">{{ c.share }}% of {{ analytics.year }} spending</span>
+        </li>
+        {% endfor %}
+      </ol>
+      {% else %}<div class="empty-state empty-state-sm"><p class="mb-0">No expenses to rank.</p></div>{% endif %}
+    </section>
+  </div>
+</div>
+
+<section class="surface mt-4" aria-labelledby="a-table">
+  <div class="surface-head"><h2 id="a-table" class="surface-title">Month by month</h2></div>
+  <div class="table-responsive">
+    <table class="table align-middle mb-0">
+      <caption class="visually-hidden">Income, expenses and net cash flow for each month of {{ analytics.year }}, with change against the previous month</caption>
+      <thead>
+        <tr><th scope="col">Month</th><th scope="col" class="text-end">Income</th><th scope="col" class="text-end">Expenses</th>
+            <th scope="col" class="text-end">Net</th><th scope="col" class="text-end">Running net</th>
+            <th scope="col">Income vs previous month</th><th scope="col">Expenses vs previous month</th></tr>
+      </thead>
+      <tbody>
+        {% for row in analytics.rows %}
+        {% if row.pending %}
+        <tr class="row-muted">
+          <th scope="row" class="fw-semibold">{{ row.totals.month.label }}</th>
+          <td colspan="6" class="text-muted">Not started yet</td>
+        </tr>
+        {% else %}
+        <tr>
+          <th scope="row" class="fw-semibold">{{ row.totals.month.label }}</th>
+          <td class="text-end amt">{{ row.totals.income|currency }}</td>
+          <td class="text-end amt">{{ row.totals.expenses|currency }}</td>
+          <td class="text-end">{{ balance(row.totals.net) }}</td>
+          <td class="text-end">{{ balance(row.cumulative_net) }}</td>
+          <td>{{ change_note(row.income_change, 'last month', higher_is_good=True) }}</td>
+          <td>{{ change_note(row.expense_change, 'last month', higher_is_good=False) }}</td>
+        </tr>
+        {% endif %}
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<script type="application/json" id="chart-data">{{ charts|tojson }}</script>
+{% endif %}
+{% endblock %}
+
+{% block page_scripts %}
+{% if analytics.totals.count > 0 %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"
+        integrity="sha384-JUh163oCRItcbPme8pYnROHQMC6fNKTBWtRG3I3I0erJkzNgL7uxKlNwcrcFKeqF"
+        crossorigin="anonymous"></script>
+<script src="{{ url_for('static', filename='js/charts.js') }}"></script>
+{% endif %}
+{% endblock %}

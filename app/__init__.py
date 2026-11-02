@@ -1,4 +1,5 @@
 """Application factory."""
+import calendar
 import os
 
 from flask import Flask, Response, render_template, request, url_for
@@ -45,14 +46,17 @@ def create_app(config_name: str | None = None) -> Flask:
     migrate.init_app(app, db)
 
     from .accounts import bp as accounts_bp
+    from .analytics import bp as analytics_bp
     from .auth import bp as auth_bp
     from .categories import bp as categories_bp
     from .main import bp as main_bp
+    from .reports import bp as reports_bp
     from .transactions import bp as transactions_bp
     from .transfers import bp as transfers_bp
 
     for blueprint in (
-        auth_bp, main_bp, accounts_bp, categories_bp, transactions_bp, transfers_bp
+        auth_bp, main_bp, accounts_bp, categories_bp, transactions_bp, transfers_bp,
+        analytics_bp, reports_bp,
     ):
         app.register_blueprint(blueprint)
 
@@ -60,6 +64,7 @@ def create_app(config_name: str | None = None) -> Flask:
     app.jinja_env.globals["currency_symbol"] = currency_symbol
     app.jinja_env.globals["currency_code"] = currency_code
     app.jinja_env.globals["page_url"] = page_url
+    app.jinja_env.globals["month_names"] = list(calendar.month_name)[1:]
     app.register_error_handler(404, _not_found)
     app.after_request(_set_security_headers)
     return app

@@ -1,16 +1,179 @@
 {% extends "app_base.html" %}
+{% from "_macros.html" import stat_card, change_note, month_picker, share_bar, amount, balance %}
 {% block title %}Dashboard{% endblock %}
 
 {% block content %}
+{% set totals = data.totals %}
+{% set previous_month = data.month.shift(-1) %}
 <div class="page-head">
   <div>
-    <h1 class="page-title">Hello, {{ current_user.display_name }}</h1>
-    <p class="page-sub">Your overview, charts and analytics arrive in the next phase.</p>
+    <h1 class="page-title">Dashboard</h1>
+    <p class="page-sub">Overview for {{ data.month.label }}</p>
   </div>
+  {{ month_picker(data.month, years, 'main.dashboard') }}
 </div>
-<div class="d-flex flex-wrap gap-2">
-  <a class="btn btn-brand" href="{{ url_for('transactions.new', type='expense') }}">Add expense</a>
-  <a class="btn btn-outline-secondary" href="{{ url_for('transactions.new', type='income') }}">Add income</a>
-  <a class="btn btn-outline-secondary" href="{{ url_for('accounts.index') }}">View accounts</a>
-</div>
+
+{% if not accounts %}
+  {# ---- Empty state 1: brand-new user, no accounts yet ---- #}
+  <section class="surface onboarding" aria-labelledby="onboarding-title">
+    <h2 id="onboarding-title" class="onboarding-title">Welcome, {{ current_user.display_name }}. Let's set you up.</h2>
+    <p class="text-muted mb-4">Your dashboard fills in as you record activity. It takes about a minute:</p>
+    <ol class="onboarding-steps">
+      <li><strong>Create an account</strong> such as Cash, Checking or Savings, with its current balance.</li>
+      <li><strong>Add transactions</strong>: income and expenses, grouped by category.</li>
+      <li><strong>Come back here</strong> for balances, trends and where your money goes.</li>
+    </ol>
+    <a class="btn btn-brand" href="{{ url_for('accounts.new') }}">Create your first account</a>
+  </section>
+{% else %}
+
+  <div class="stat-grid">
+    {% call stat_card('Total balance', total_balance|currency, 'bad' if total_balance < 0 else '') %}
+      Across {{ accounts|length }} active account{{ '' if accounts|length == 1 else 's' }}
+    {% endcall %}
+    {% call stat_card('Income · ' ~ data.month.short_label, totals.income|currency, 'good' if totals.income > 0 else '') %}
+      {{ change_note(data.income_change, previous_month.short_label, higher_is_good=True) }}
+    {% endcall %}
+    {% call stat_card('Expenses · ' ~ data.month.short_label, totals.expenses|currency) %}
+      {{ change_note(data.expense_change, previous_month.short_label, higher_is_good=False) }}
+    {% endcall %}
+    {% call stat_card('Net cash flow', totals.net|currency, 'bad' if totals.net < 0 else ('good' if totals.net > 0 else '')) %}
+      {% if totals.savings_rate is not none %}
+        {{ totals.savings_rate }}% of income {{ 'saved' if totals.net >= 0 else 'overspent' }}
+      {% else %}
+        No income recorded in {{ data.month.short_label }}
+      {% endif %}
+    {% endcall %}
+  </div>
+
+  {% if not data.has_transactions %}
+    {# ---- Empty state 2: accounts exist but no transactions at all ---- #}
+    <section class="surface onboarding" aria-labelledby="first-txn-title">
+      <h2 id="first-txn-title" class="onboarding-title">Record your first transaction</h2>
+      <p class="text-muted mb-3">Charts and trends appear once you've added some income or expenses.</p>
+      <div class="d-flex flex-wrap gap-2">
+        <a class="btn btn-brand" href="{{ url_for('transactions.new', type='expense') }}">Add expense</a>
+        <a class="btn btn-outline-secondary" href="{{ url_for('transactions.new', type='income') }}">Add income</a>
+      </div>
+    </section>
+  {% else %}
+
+  <div class="row g-4 mt-0">
+    <div class="col-xl-8">
+      <section class="surface chart-card h-100" aria-labelledby="ie-title">
+        <div class="surface-head"><h2 id="ie-title" class="surface-title">Income vs expenses · last 6 months</h2></div>
+        <div class="chart-body">
+          <div class="chart-box chart-box-lg"><canvas id="chart-ie" data-chart="incomeExpense" role="img"
+               aria-label="Bar chart comparing income and expenses for each of the last six months. The same figures are in the table below."></canvas></div>
+          <details class="chart-table">
+            <summary>View as a table</summary>
+            <div class="table-responsive">
+              <table class="table table-sm mb-0">
+                <caption class="visually-hidden">Income and expenses by month</caption>
+                <thead><tr><th scope="col">Month</th><th scope="col" class="text-end">Income</th><th scope="col" class="text-end">Expenses</th><th scope="col" class="text-end">Net</th></tr></thead>
+                <tbody>
+                  {% for m in data.trend %}
+                  <tr><th scope="row">{{ m.month.short_label }}</th><td class="text-end amt">{{ m.income|currency }}</td><td class="text-end amt">{{ m.expenses|currency }}</td><td class="text-end">{{ balance(m.net) }}</td></tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </details>
+        </div>
+      </section>
+    </div>
+
+    <div class="col-xl-4">
+      <section class="surface chart-card h-100" aria-labelledby="cat-title">
+        <div class="surface-head">
+          <h2 id="cat-title" class="surface-title">Spending by category · {{ data.month.short_label }}</h2>
+        </div>
+        <div class="chart-body">
+          {% if data.spending %}
+            <div class="chart-box chart-box-sm"><canvas id="chart-cat" data-chart="category" role="img"
+                 aria-label="Doughnut chart of spending by category for {{ data.month.label }}. The same figures are listed below."></canvas></div>
+            <ul class="rank-list">
+              {% for c in data.spending[:5] %}
+              <li>
+                <div class="rank-row"><span class="rank-name">{{ c.name }}</span><span class="amt">{{ c.total|currency }}</span></div>
+                {{ share_bar(c.share) }}
+                <span class="rank-share">{{ c.share }}% of spending</span>
+              </li>
+              {% endfor %}
+            </ul>
+            {% if data.spending|length > 5 %}<p class="small mb-0"><a href="{{ url_for('reports.index', date_from=data.month.first.isoformat(), date_to=data.month.last.isoformat()) }}">See all {{ data.spending|length }} categories in Reports</a></p>{% endif %}
+          {% else %}
+            <div class="empty-state empty-state-sm">
+              <p class="mb-2">No expenses recorded in {{ data.month.label }}.</p>
+              <a href="{{ url_for('transactions.new', type='expense') }}">Add an expense</a>
+            </div>
+          {% endif %}
+        </div>
+      </section>
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="row g-4 mt-0">
+    <div class="col-xl-7">
+      <section class="surface" aria-labelledby="recent-title">
+        <div class="surface-head">
+          <h2 id="recent-title" class="surface-title">Recent transactions</h2>
+          <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('transactions.index') }}">View all</a>
+        </div>
+        {% if data.recent %}
+        <div class="table-responsive">
+          <table class="table align-middle mb-0">
+            <thead><tr><th scope="col">Date</th><th scope="col">Description</th><th scope="col">Category</th><th scope="col" class="text-end">Amount</th></tr></thead>
+            <tbody>
+              {% for t in data.recent %}
+              <tr>
+                <td class="text-nowrap">{{ t.transaction_date.strftime('%d %b %Y') }}</td>
+                <td>{{ t.description or '—' }}<div class="small text-muted">{{ t.account.name }}</div></td>
+                <td><span class="badge cat-badge cat-{{ t.type.value }}">{{ t.category.name }}</span></td>
+                <td class="text-end text-nowrap">{{ amount(t.amount, t.type.value) }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <div class="empty-state empty-state-sm"><p class="mb-0">No transactions yet.</p></div>
+        {% endif %}
+      </section>
+    </div>
+
+    <div class="col-xl-5">
+      <section class="surface" aria-labelledby="acct-title">
+        <div class="surface-head">
+          <h2 id="acct-title" class="surface-title">Account balances</h2>
+          <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('accounts.index') }}">Manage</a>
+        </div>
+        <ul class="list-group list-group-flush">
+          {% for s in accounts %}
+          <li class="list-group-item d-flex justify-content-between align-items-center gap-3">
+            <div><span class="fw-semibold">{{ s.account.name }}</span>
+              <div class="small text-muted">{{ s.account.account_type.value.replace('_', ' ').title() }}</div></div>
+            {{ balance(s.balance) }}
+          </li>
+          {% endfor %}
+        </ul>
+        <p class="small text-muted px-3 py-2 mb-0 border-top">Transfers move money between accounts and are never counted as income or expenses.</p>
+      </section>
+    </div>
+  </div>
+{% endif %}
+
+{% if accounts and data.has_transactions %}
+<script type="application/json" id="chart-data">{{ charts|tojson }}</script>
+{% endif %}
+{% endblock %}
+
+{% block page_scripts %}
+{% if accounts and data.has_transactions %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"
+        integrity="sha384-JUh163oCRItcbPme8pYnROHQMC6fNKTBWtRG3I3I0erJkzNgL7uxKlNwcrcFKeqF"
+        crossorigin="anonymous"></script>
+<script src="{{ url_for('static', filename='js/charts.js') }}"></script>
+{% endif %}
 {% endblock %}

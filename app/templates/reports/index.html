@@ -1,0 +1,104 @@
+{% extends "app_base.html" %}
+{% from "_macros.html" import field, stat_card, share_bar, balance %}
+{% block title %}Reports{% endblock %}
+
+{% block content %}
+{% set totals = report.totals %}
+{% set f = report.filters %}
+{% set custom = request.args.get('account', '0') not in ('', '0') or request.args.get('category', '0') not in ('', '0') or request.args.get('date_from') or request.args.get('date_to') %}
+<div class="page-head">
+  <div>
+    <h1 class="page-title">Reports</h1>
+    <p class="page-sub">{{ f.date_from.strftime('%d %b %Y') }} to {{ f.date_to.strftime('%d %b %Y') }}</p>
+  </div>
+  <div class="d-flex flex-wrap gap-2">
+    <a class="btn btn-outline-secondary" href="{{ url_for('reports.export_summary', **query) }}">Export monthly summary (CSV)</a>
+    <a class="btn btn-brand" href="{{ url_for('reports.export_transactions', **query) }}">Export transactions (CSV)</a>
+  </div>
+</div>
+
+<form method="get" class="surface filter-bar" role="search" aria-label="Report filters" action="{{ url_for('reports.index') }}">
+  <button class="btn btn-outline-secondary btn-sm d-md-none w-100 mb-3" type="button" data-bs-toggle="collapse"
+          data-bs-target="#reportFields" aria-expanded="{{ 'true' if custom or form.errors else 'false' }}" aria-controls="reportFields">Filters</button>
+  <div class="collapse d-md-block {{ 'show' if custom or form.errors else '' }}" id="reportFields">
+    <div class="row g-2">
+      <div class="col-6 col-md-3">{{ field(form.date_from, size='sm') }}</div>
+      <div class="col-6 col-md-3">{{ field(form.date_to, size='sm') }}</div>
+      <div class="col-12 col-md-3">{{ field(form.account, size='sm') }}</div>
+      <div class="col-12 col-md-3">{{ field(form.category, size='sm') }}</div>
+      <div class="col-12 d-flex gap-2 mb-3">
+        <button class="btn btn-brand btn-sm">Apply</button>
+        <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('reports.index') }}">Reset (year to date)</a>
+      </div>
+    </div>
+  </div>
+</form>
+
+<div class="stat-grid">
+  {% call stat_card('Income', totals.income|currency, 'good' if totals.income > 0 else '') %}
+    {{ totals.count }} transaction{{ '' if totals.count == 1 else 's' }}
+  {% endcall %}
+  {% call stat_card('Expenses', totals.expenses|currency) %}Money spent{% endcall %}
+  {% call stat_card('Net', totals.net|currency, 'bad' if totals.net < 0 else ('good' if totals.net > 0 else '')) %}
+    {% if totals.savings_rate is not none %}{{ totals.savings_rate }}% of income {{ 'saved' if totals.net >= 0 else 'overspent' }}{% else %}No income in this range{% endif %}
+  {% endcall %}
+  {% call stat_card('Months covered', report.months|length) %}Transfers are excluded{% endcall %}
+</div>
+
+{% if totals.count == 0 %}
+  <section class="surface onboarding">
+    <h2 class="onboarding-title">Nothing matches these filters</h2>
+    <p class="text-muted mb-3">Widen the date range, or choose “All accounts” and “All categories”.</p>
+    <a class="btn btn-outline-secondary" href="{{ url_for('reports.index') }}">Reset to year to date</a>
+  </section>
+{% else %}
+<section class="surface mt-4" aria-labelledby="r-months">
+  <div class="surface-head"><h2 id="r-months" class="surface-title">Monthly summary</h2></div>
+  <div class="table-responsive">
+    <table class="table align-middle mb-0">
+      <caption class="visually-hidden">Income, expenses and net cash flow for each month in the selected range</caption>
+      <thead><tr><th scope="col">Month</th><th scope="col" class="text-end">Income</th><th scope="col" class="text-end">Expenses</th>
+                 <th scope="col" class="text-end">Net</th><th scope="col" class="text-end">Savings rate</th></tr></thead>
+      <tbody>
+        {% for m in report.months %}
+        <tr>
+          <th scope="row" class="fw-semibold">{{ m.month.label }}</th>
+          <td class="text-end amt">{{ m.income|currency }}</td>
+          <td class="text-end amt">{{ m.expenses|currency }}</td>
+          <td class="text-end">{{ balance(m.net) }}</td>
+          <td class="text-end">{{ (m.savings_rate ~ '%') if m.savings_rate is not none else '—' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr class="table-total"><th scope="row">Total</th><td class="text-end amt">{{ totals.income|currency }}</td>
+            <td class="text-end amt">{{ totals.expenses|currency }}</td><td class="text-end">{{ balance(totals.net) }}</td>
+            <td class="text-end">{{ (totals.savings_rate ~ '%') if totals.savings_rate is not none else '—' }}</td></tr>
+      </tfoot>
+    </table>
+  </div>
+</section>
+
+<div class="row g-4 mt-0">
+  {% for title, items, empty in (('Expenses by category', report.expense_categories, 'No expenses in this range.'),
+                                 ('Income by category', report.income_categories, 'No income in this range.')) %}
+  <div class="col-lg-6">
+    <section class="surface h-100" aria-labelledby="r-cat-{{ loop.index }}">
+      <div class="surface-head"><h2 id="r-cat-{{ loop.index }}" class="surface-title">{{ title }}</h2></div>
+      {% if items %}
+      <ul class="rank-list">
+        {% for c in items %}
+        <li>
+          <div class="rank-row"><span class="rank-name">{{ c.name }}</span><span class="amt">{{ c.total|currency }}</span></div>
+          {{ share_bar(c.share) }}
+          <span class="rank-share">{{ c.share }}%</span>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}<div class="empty-state empty-state-sm"><p class="mb-0">{{ empty }}</p></div>{% endif %}
+    </section>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+{% endblock %}

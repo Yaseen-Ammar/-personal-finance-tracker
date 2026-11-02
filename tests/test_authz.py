@@ -6,7 +6,7 @@ from app.models import Account, Category, Transaction, Transfer
 
 from .conftest import add_account, add_transfer, add_txn, category_of
 
-PROTECTED_BLUEPRINTS = {"transactions", "accounts", "categories", "transfers"}
+PROTECTED_BLUEPRINTS = {"transactions", "accounts", "categories", "transfers", "analytics", "reports"}
 
 
 def protected_rules(app):

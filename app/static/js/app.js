@@ -1,3 +1,9 @@
+// Month/year pickers: submit as soon as a <select> changes. Without JavaScript
+// the visible "Go" button does the same thing.
+document.querySelectorAll("select[data-autosubmit]").forEach((select) => {
+  select.addEventListener("change", () => select.form.requestSubmit());
+});
+
 // Fill the shared confirmation modal from the button that opened it.
 const confirmModal = document.getElementById("confirmModal");
 if (confirmModal) {

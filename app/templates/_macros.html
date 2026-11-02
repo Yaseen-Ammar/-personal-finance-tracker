@@ -73,6 +73,73 @@
           {% if next_url %}data-confirm-next="{{ next_url }}"{% endif %}>{{ label }}</button>
 {% endmacro %}
 
+{# ---- Dashboard / analytics building blocks ---- #}
+
+{# A headline number. `tone` is '', 'good' or 'bad' (colour is never the only cue: see change_note). #}
+{% macro stat_card(label, value, tone='') %}
+  <div class="stat-card {{ 'stat-' ~ tone if tone else '' }}">
+    <span class="stat-label">{{ label }}</span>
+    <span class="stat-value">{{ value }}</span>
+    <div class="stat-sub">{{ caller() if caller else '' }}</div>
+  </div>
+{% endmacro %}
+
+{# Percentage change vs a previous period. Uses an arrow AND words, not colour alone. #}
+{% macro change_note(pct, since, higher_is_good=True) %}
+  {% if pct is none %}
+    <span class="delta delta-flat">Nothing in {{ since }} to compare</span>
+  {% elif pct == 0 %}
+    <span class="delta delta-flat">No change vs {{ since }}</span>
+  {% else %}
+    {% set up = pct > 0 %}
+    <span class="delta {{ 'delta-good' if up == higher_is_good else 'delta-bad' }}">
+      <span aria-hidden="true">{{ '▲' if up else '▼' }}</span>
+      {{ pct|abs }}% <span class="visually-hidden">{{ 'higher' if up else 'lower' }} than</span><span aria-hidden="true">vs</span> {{ since }}
+    </span>
+  {% endif %}
+{% endmacro %}
+
+{# Month + year picker that works without JavaScript (plain GET form). #}
+{% macro month_picker(month, years, endpoint) %}
+  {% set previous = month.shift(-1) %}{% set following = month.shift(1) %}
+  <form method="get" action="{{ url_for(endpoint) }}" class="period-picker" aria-label="Choose month">
+    <a class="btn btn-outline-secondary btn-sm" href="{{ url_for(endpoint, year=previous.year, month=previous.number) }}"
+       aria-label="Previous month, {{ previous.label }}"><span aria-hidden="true">&lsaquo;</span></a>
+    <label class="visually-hidden" for="period-month">Month</label>
+    <select id="period-month" name="month" class="form-select form-select-sm" data-autosubmit>
+      {% for name in month_names %}<option value="{{ loop.index }}" {{ 'selected' if loop.index == month.number else '' }}>{{ name }}</option>{% endfor %}
+    </select>
+    <label class="visually-hidden" for="period-year">Year</label>
+    <select id="period-year" name="year" class="form-select form-select-sm" data-autosubmit>
+      {% for y in years %}<option value="{{ y }}" {{ 'selected' if y == month.year else '' }}>{{ y }}</option>{% endfor %}
+    </select>
+    <button class="btn btn-brand btn-sm">Go</button>
+    <a class="btn btn-outline-secondary btn-sm" href="{{ url_for(endpoint, year=following.year, month=following.number) }}"
+       aria-label="Next month, {{ following.label }}"><span aria-hidden="true">&rsaquo;</span></a>
+    <a class="btn btn-link btn-sm" href="{{ url_for(endpoint) }}">This month</a>
+  </form>
+{% endmacro %}
+
+{% macro year_picker(year, years, endpoint) %}
+  <form method="get" action="{{ url_for(endpoint) }}" class="period-picker" aria-label="Choose year">
+    <a class="btn btn-outline-secondary btn-sm" href="{{ url_for(endpoint, year=year - 1) }}"
+       aria-label="Previous year, {{ year - 1 }}"><span aria-hidden="true">&lsaquo;</span></a>
+    <label class="visually-hidden" for="period-year">Year</label>
+    <select id="period-year" name="year" class="form-select form-select-sm" data-autosubmit>
+      {% for y in years %}<option value="{{ y }}" {{ 'selected' if y == year else '' }}>{{ y }}</option>{% endfor %}
+    </select>
+    <button class="btn btn-brand btn-sm">Go</button>
+    <a class="btn btn-outline-secondary btn-sm" href="{{ url_for(endpoint, year=year + 1) }}"
+       aria-label="Next year, {{ year + 1 }}"><span aria-hidden="true">&rsaquo;</span></a>
+    <a class="btn btn-link btn-sm" href="{{ url_for(endpoint) }}">This year</a>
+  </form>
+{% endmacro %}
+
+{# Horizontal bar showing a category's share of the total. #}
+{% macro share_bar(share) %}
+  <div class="share-bar" aria-hidden="true"><span style="width: {{ [share, 100]|min }}%"></span></div>
+{% endmacro %}
+
 {# Bootstrap pagination for a Flask-SQLAlchemy Pagination object. #}
 {% macro render_pagination(p) %}
   {% if p.pages > 1 %}

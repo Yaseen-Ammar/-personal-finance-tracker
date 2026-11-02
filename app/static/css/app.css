@@ -117,7 +117,7 @@ body { background: var(--paper); color: var(--ink); font-family: var(--font-body
   display: flex; align-items: center; gap: 1rem;
   padding: .75rem 1.5rem; background: var(--paper-2); border-bottom: 1px solid #ddd5c3;
 }
-.app-content { padding: 1.75rem 1.5rem 3rem; max-width: 1180px; width: 100%; }
+.app-content { padding: 1.75rem 1.5rem 3rem; max-width: 1480px; width: 100%; margin-inline: auto; }
 @media (max-width: 575.98px) { .app-content { padding: 1.25rem 1rem 2.5rem; } }
 
 .page-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.25rem; }
@@ -154,6 +154,61 @@ body { background: var(--paper); color: var(--ink); font-family: var(--font-body
 .total-label { text-transform: uppercase; letter-spacing: .1em; font-size: .72rem; opacity: .8; }
 .total-value { font-family: var(--font-display); font-size: 2.6rem; line-height: 1.1; font-variant-numeric: tabular-nums; }
 .total-value.amt-out { color: #f2b5a6; }
+
+/* ---- Dashboard / analytics ---- */
+.period-picker { display: flex; align-items: center; flex-wrap: wrap; gap: .4rem; }
+.period-picker .form-select { width: auto; min-width: 7.5rem; }
+.period-picker .btn-link { color: var(--brand); }
+
+.stat-grid { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); margin-bottom: 1.5rem; }
+.stat-card {
+  display: flex; flex-direction: column; gap: .25rem; padding: 1.1rem 1.25rem;
+  background: #fffdf8; border: 1px solid #e2dac8; border-left: 4px solid #b9b19e; border-radius: var(--radius);
+}
+.stat-card.stat-good { border-left-color: var(--gain); }
+.stat-card.stat-bad { border-left-color: var(--loss); }
+.stat-label { font-size: .75rem; text-transform: uppercase; letter-spacing: .08em; color: var(--ink-soft); font-weight: 600; }
+.stat-value { font-family: var(--font-display); font-size: 1.9rem; line-height: 1.15; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.stat-bad .stat-value { color: var(--loss); }
+.stat-sub { font-size: .85rem; color: var(--ink-soft); min-height: 1.3em; }
+
+.delta { font-weight: 600; font-size: .82rem; }
+.delta-good { color: var(--gain); }
+.delta-bad { color: var(--loss); }
+.delta-flat { color: var(--ink-soft); font-weight: 500; }
+
+.chart-body { padding: 1rem 1.25rem 1.25rem; }
+.chart-box { position: relative; height: 300px; }
+.chart-box-sm { height: 240px; margin-bottom: 1rem; }
+/* Where a chart sits beside the taller category list, give it more height so the cards line up. */
+@media (min-width: 1200px) { .chart-box-lg { height: 380px; } }
+.chart-table { margin-top: .75rem; font-size: .9rem; }
+.chart-table summary { cursor: pointer; color: var(--brand); font-weight: 500; }
+
+.rank-list { list-style: none; margin: 0; padding: 0 1.25rem 1rem; display: grid; gap: .8rem; }
+.surface > .rank-list { padding-top: 1rem; }
+.rank-list-numbered { counter-reset: rank; }
+.rank-list-numbered > li { counter-increment: rank; }
+.rank-row { display: flex; justify-content: space-between; gap: 1rem; }
+.rank-list-numbered .rank-name::before { content: counter(rank) ". "; color: var(--ink-soft); }
+.rank-name { font-weight: 500; overflow-wrap: anywhere; }
+.rank-share { font-size: .8rem; color: var(--ink-soft); }
+.share-bar { height: 6px; margin: .3rem 0 .15rem; background: #e9e2d2; border-radius: 99px; overflow: hidden; }
+.share-bar > span { display: block; height: 100%; background: var(--brand); border-radius: 99px; }
+
+.onboarding { padding: 2rem 1.75rem; margin-bottom: 1.5rem; }
+.onboarding-title { font-family: var(--font-display); font-size: 1.6rem; margin-bottom: .5rem; }
+.onboarding-steps { padding-left: 1.2rem; margin-bottom: 1.5rem; display: grid; gap: .5rem; }
+.empty-state-sm { padding: 1.5rem 1rem; }
+
+.table-total th, .table-total td { border-top: 2px solid var(--ink); font-weight: 700; background: var(--paper-2); }
+.table caption { caption-side: top; }
+
+@media (max-width: 575.98px) {
+  .stat-value { font-size: 1.6rem; }
+  .chart-box { height: 240px; }
+  .period-picker .form-select { min-width: 6.5rem; }
+}
 
 /* Pagination in brand colours (Bootstrap defaults to its own blue). */
 .pagination {
