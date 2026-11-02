@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% from "_macros.html" import flashes %}
+{% block body_class %}app-body{% endblock %}
+
+{% block body %}
+{% set nav = [
+  ('main.dashboard', 'Dashboard', 'main'),
+  ('transactions.index', 'Transactions', 'transactions'),
+  ('accounts.index', 'Accounts', 'accounts'),
+  ('transfers.index', 'Transfers', 'transfers'),
+  ('categories.index', 'Categories', 'categories'),
+] %}
+<a class="skip-link visually-hidden-focusable" href="#main">Skip to main content</a>
+<div class="app-shell">
+  <nav class="sidebar offcanvas-lg offcanvas-start" tabindex="-1" id="sidebar"
+       aria-label="Main navigation">
+    <div class="offcanvas-header d-lg-none">
+      <span class="brand-mark brand-mark-sm">Ledgerly</span>
+      <button type="button" class="btn-close" data-bs-dismiss="offcanvas"
+              data-bs-target="#sidebar" aria-label="Close menu"></button>
+    </div>
+    <div class="sidebar-inner">
+      <a class="brand-mark d-none d-lg-block sidebar-brand" href="{{ url_for('main.dashboard') }}">Ledgerly</a>
+      <ul class="nav flex-column sidebar-nav">
+        {% for endpoint, label, bp_name in nav %}
+          <li class="nav-item">
+            <a class="nav-link {{ 'active' if request.blueprint == bp_name else '' }}"
+               {% if request.blueprint == bp_name %}aria-current="page"{% endif %}
+               href="{{ url_for(endpoint) }}">{{ label }}</a>
+          </li>
+        {% endfor %}
+      </ul>
+    </div>
+  </nav>
+
+  <div class="app-main">
+    <header class="topbar">
+      <button class="btn btn-outline-secondary btn-sm d-lg-none" type="button"
+              data-bs-toggle="offcanvas" data-bs-target="#sidebar"
+              aria-controls="sidebar">Menu</button>
+      <form method="post" action="{{ url_for('auth.logout') }}"
+            class="d-flex align-items-center gap-3 ms-auto">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <span class="text-muted small">{{ current_user.display_name }}</span>
+        <button type="submit" class="btn btn-outline-secondary btn-sm">Sign out</button>
+      </form>
+    </header>
+    <main class="app-content" id="main" tabindex="-1">
+      {{ flashes() }}
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+</div>
+
+{# One reusable confirmation dialog for every destructive action. #}
+<div class="modal fade" id="confirmModal" tabindex="-1" aria-labelledby="confirmModalTitle" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <form class="modal-content" method="post" id="confirmForm">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="next" id="confirmNext" value="">
+      <div class="modal-header">
+        <h2 class="modal-title fs-5" id="confirmModalTitle">Are you sure?</h2>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" id="confirmBody"></div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="submit" class="btn btn-danger">Confirm</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+{% block page_scripts %}{% endblock %}
+{% endblock %}

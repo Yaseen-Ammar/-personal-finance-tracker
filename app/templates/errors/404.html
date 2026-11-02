@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}Not found{% endblock %}
+{% block body %}
+<main class="container py-5 text-center">
+  <p class="brand-mark brand-mark-sm">Ledgerly</p>
+  <h1 class="auth-title">We couldn't find that page</h1>
+  <p class="auth-sub">It may not exist, or it isn't yours to view.</p>
+  <a class="btn btn-brand" href="{{ url_for('main.index') }}">Back to safety</a>
+</main>
+{% endblock %}

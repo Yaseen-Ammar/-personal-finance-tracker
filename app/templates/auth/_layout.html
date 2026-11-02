@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% from "_macros.html" import flashes %}
+{% block body_class %}auth-body{% endblock %}
+
+{% block body %}
+<main class="auth-shell">
+  <aside class="auth-brand" aria-hidden="true">
+    <div class="brand-mark">Ledgerly</div>
+    <div class="brand-copy">
+      <p class="brand-kicker">Personal finance, kept honest</p>
+      <h2>Know where your money goes.</h2>
+      <ul class="brand-ledger">
+        <li><span>Income</span><span class="amt pos">+ 3,250.00</span></li>
+        <li><span>Rent</span><span class="amt neg">– 1,050.00</span></li>
+        <li><span>Groceries</span><span class="amt neg">– 312.40</span></li>
+        <li class="total"><span>Saved this month</span><span class="amt pos">1,887.60</span></li>
+      </ul>
+    </div>
+  </aside>
+
+  <section class="auth-panel">
+    <div class="auth-card">
+      <div class="brand-mark brand-mark-sm d-lg-none">Ledgerly</div>
+      {{ flashes() }}
+      {% block auth_content %}{% endblock %}
+    </div>
+  </section>
+</main>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/auth.js') }}"></script>
+{% endblock %}

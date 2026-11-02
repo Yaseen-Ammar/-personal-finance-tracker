@@ -1,0 +1,47 @@
+{% extends "app_base.html" %}
+{% from "_macros.html" import confirm_button, render_pagination %}
+{% block title %}Transfers{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1 class="page-title">Transfers</h1>
+    <p class="page-sub">Moving money between your own accounts. Transfers are not income or expenses.</p>
+  </div>
+  <a class="btn btn-brand" href="{{ url_for('transfers.new') }}">New transfer</a>
+</div>
+
+<div class="surface">
+  {% if pagination.items %}
+  <div class="table-responsive">
+    <table class="table align-middle mb-0">
+      <thead>
+        <tr><th scope="col">Date</th><th scope="col">From</th><th scope="col">To</th><th scope="col">Note</th><th scope="col" class="text-end">Amount</th><th scope="col" class="text-end">Actions</th></tr>
+      </thead>
+      <tbody>
+        {% for t in pagination.items %}
+        <tr>
+          <td class="text-nowrap">{{ t.transfer_date.strftime('%d %b %Y') }}</td>
+          <td>{{ t.from_account.name }}</td>
+          <td>{{ t.to_account.name }}</td>
+          <td>{{ t.description or '—' }}</td>
+          <td class="text-end amt">{{ t.amount|currency }}</td>
+          <td class="text-end">
+            {{ confirm_button(url_for('transfers.delete', transfer_id=t.id),
+                              'Delete transfer?',
+                              'Delete the transfer of ' ~ (t.amount|currency) ~ ' from ' ~ t.from_account.name ~ ' to ' ~ t.to_account.name ~ '? Both balances will be adjusted back.') }}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if pagination.pages > 1 %}<div class="surface-foot">{{ render_pagination(pagination) }}</div>{% endif %}
+  {% else %}
+  <div class="empty-state">
+    <p class="mb-3">No transfers yet.</p>
+    <a class="btn btn-brand" href="{{ url_for('transfers.new') }}">Make a transfer</a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,99 @@
+{# Shared UI macros. Jinja autoescapes every value. #}
+
+{# One WTForms field with Bootstrap validation styling. #}
+{# `prefix` shows a fixed label (e.g. the currency symbol) in front of the input. #}
+{% macro field(f, autocomplete=None, autofocus=False, hint=None, size='lg', prefix=None) %}
+  {% set sz = (' form-control-' ~ size) if size else '' %}
+  {% set invalid = ' is-invalid' if f.errors else '' %}
+  {# Link the input to its error/hint text so screen readers announce them. #}
+  {% set described = [] %}
+  {% if f.errors %}{% set _ = described.append(f.id ~ '-error') %}{% endif %}
+  {% if hint %}{% set _ = described.append(f.id ~ '-hint') %}{% endif %}
+  {% set a11y = {} %}
+  {% if described %}{% set _ = a11y.update({'aria-describedby': described|join(' ')}) %}{% endif %}
+  {% if f.errors %}{% set _ = a11y.update({'aria-invalid': 'true'}) %}{% endif %}
+  <div class="mb-3">
+    <label for="{{ f.id }}" class="form-label">{{ f.label.text }}</label>
+    {% if f.type == 'PasswordField' %}
+      <div class="input-group has-validation">
+        {{ f(class='form-control' ~ sz ~ invalid, autocomplete=autocomplete, autofocus=autofocus, **a11y) }}
+        <button class="btn btn-outline-secondary js-toggle-password" type="button"
+                data-target="{{ f.id }}" aria-label="Show password">Show</button>
+        {% if f.errors %}<div class="invalid-feedback" id="{{ f.id }}-error">{{ f.errors|join(' ') }}</div>{% endif %}
+      </div>
+    {% elif f.type == 'SelectField' %}
+      {{ f(class='form-select' ~ (' form-select-' ~ size if size else '') ~ invalid, autofocus=autofocus, **a11y) }}
+      {% if f.errors %}<div class="invalid-feedback" id="{{ f.id }}-error">{{ f.errors|join(' ') }}</div>{% endif %}
+    {% elif prefix %}
+      <div class="input-group has-validation">
+        <span class="input-group-text" aria-hidden="true">{{ prefix }}</span>
+        {{ f(class='form-control' ~ sz ~ invalid, autocomplete=autocomplete, autofocus=autofocus, **a11y) }}
+        {% if f.errors %}<div class="invalid-feedback" id="{{ f.id }}-error">{{ f.errors|join(' ') }}</div>{% endif %}
+      </div>
+    {% else %}
+      {{ f(class='form-control' ~ sz ~ invalid, autocomplete=autocomplete, autofocus=autofocus, **a11y) }}
+      {% if f.errors %}<div class="invalid-feedback" id="{{ f.id }}-error">{{ f.errors|join(' ') }}</div>{% endif %}
+    {% endif %}
+    {% if hint %}<div class="form-text" id="{{ f.id }}-hint">{{ hint }}</div>{% endif %}
+  </div>
+{% endmacro %}
+
+{% macro flashes() %}
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for category, message in messages %}
+      <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
+    {% endfor %}
+  {% endwith %}
+{% endmacro %}
+
+{# Signed, coloured money: income green "+", expense red "-". #}
+{% macro amount(value, flow) %}
+  {% if flow == 'income' %}
+    <span class="amt amt-in">+{{ value|currency }}</span>
+  {% else %}
+    <span class="amt amt-out">&minus;{{ value|currency }}</span>
+  {% endif %}
+{% endmacro %}
+
+{# A balance: negative values are red. #}
+{% macro balance(value) %}
+  <span class="amt {{ 'amt-out' if value < 0 else '' }}">{{ value|currency }}</span>
+{% endmacro %}
+
+{# Delete button that opens the shared confirmation modal (see app_base.html). #}
+{% macro confirm_button(action, title, body, label='Delete', next_url=None) %}
+  <button type="button" class="btn btn-sm btn-outline-danger"
+          data-bs-toggle="modal" data-bs-target="#confirmModal"
+          data-confirm-action="{{ action }}"
+          data-confirm-title="{{ title }}"
+          data-confirm-body="{{ body }}"
+          {% if next_url %}data-confirm-next="{{ next_url }}"{% endif %}>{{ label }}</button>
+{% endmacro %}
+
+{# Bootstrap pagination for a Flask-SQLAlchemy Pagination object. #}
+{% macro render_pagination(p) %}
+  {% if p.pages > 1 %}
+  <nav aria-label="Pagination">
+    <ul class="pagination pagination-sm justify-content-center mb-0">
+      <li class="page-item {{ '' if p.has_prev else 'disabled' }}">
+        <a class="page-link" href="{{ page_url(p.prev_num) if p.has_prev else '#' }}">Previous</a>
+      </li>
+      {% for n in p.iter_pages() %}
+        {% if n %}
+          <li class="page-item {{ 'active' if n == p.page else '' }}">
+            <a class="page-link" href="{{ page_url(n) }}">{{ n }}</a>
+          </li>
+        {% else %}
+          <li class="page-item disabled"><span class="page-link">&hellip;</span></li>
+        {% endif %}
+      {% endfor %}
+      <li class="page-item {{ '' if p.has_next else 'disabled' }}">
+        <a class="page-link" href="{{ page_url(p.next_num) if p.has_next else '#' }}">Next</a>
+      </li>
+    </ul>
+  </nav>
+  {% endif %}
+{% endmacro %}

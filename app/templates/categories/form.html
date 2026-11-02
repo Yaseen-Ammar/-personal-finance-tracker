@@ -1,0 +1,21 @@
+{% extends "app_base.html" %}
+{% from "_macros.html" import field %}
+{% block title %}{{ 'Edit category' if category else 'New category' }}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <h1 class="page-title">{{ 'Edit category' if category else 'New category' }}</h1>
+</div>
+<div class="surface form-surface">
+  <form method="post" novalidate>
+    {{ form.hidden_tag() }}
+    {{ field(form.name, autofocus=True, size=None) }}
+    {{ field(form.type, size=None,
+             hint="A category's type can only be changed while no transactions use it.") }}
+    <div class="d-flex gap-2">
+      <button type="submit" class="btn btn-brand">{{ form.submit.label.text }}</button>
+      <a class="btn btn-outline-secondary" href="{{ url_for('categories.index') }}">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

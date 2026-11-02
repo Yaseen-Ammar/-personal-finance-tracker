@@ -1,0 +1,22 @@
+{% extends "app_base.html" %}
+{% from "_macros.html" import field %}
+{% block title %}{{ 'Edit account' if account else 'New account' }}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <h1 class="page-title">{{ 'Edit account' if account else 'New account' }}</h1>
+</div>
+<div class="surface form-surface">
+  <form method="post" novalidate>
+    {{ form.hidden_tag() }}
+    {{ field(form.name, autofocus=True, size=None) }}
+    {{ field(form.account_type, size=None) }}
+    {{ field(form.opening_balance, size=None, prefix=currency_symbol(),
+             hint="The balance when you started tracking. Can be negative (e.g. a credit card). Current balance = this + your transactions.") }}
+    <div class="d-flex gap-2">
+      <button type="submit" class="btn btn-brand">{{ form.submit.label.text }}</button>
+      <a class="btn btn-outline-secondary" href="{{ url_for('accounts.index') }}">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

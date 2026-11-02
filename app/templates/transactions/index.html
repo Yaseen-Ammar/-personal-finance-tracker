@@ -1,0 +1,86 @@
+{% extends "app_base.html" %}
+{% from "_macros.html" import field, amount, confirm_button, render_pagination %}
+{% block title %}Transactions{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1 class="page-title">Transactions</h1>
+    <p class="page-sub">{{ pagination.total }} result{{ '' if pagination.total == 1 else 's' }}</p>
+  </div>
+  <div class="d-flex gap-2">
+    <a class="btn btn-outline-secondary" href="{{ url_for('transactions.new', type='income') }}">Add income</a>
+    <a class="btn btn-brand" href="{{ url_for('transactions.new', type='expense') }}">Add expense</a>
+  </div>
+</div>
+
+{# Filters are always visible on tablets/desktops. On phones they collapse behind
+   a button so the results aren't pushed a screen down; they stay open when a
+   filter is active or a field has an error. #}
+{% set active_filters = request.args.items()
+     | rejectattr(0, 'in', ['page', 'sort'])
+     | rejectattr(1, 'in', ['', '0'])
+     | list %}
+{% set filters_open = active_filters or form.errors %}
+<form method="get" class="surface filter-bar" role="search" aria-label="Filter transactions"
+      action="{{ url_for('transactions.index') }}">
+  <button class="btn btn-outline-secondary btn-sm d-md-none w-100 mb-3" type="button"
+          data-bs-toggle="collapse" data-bs-target="#filterFields"
+          aria-expanded="{{ 'true' if filters_open else 'false' }}" aria-controls="filterFields">
+    Filters{% if active_filters %} ({{ active_filters|length }} active){% endif %}
+  </button>
+  <div class="collapse d-md-block {{ 'show' if filters_open else '' }}" id="filterFields">
+    <div class="row g-2">
+      <div class="col-12 col-md-4">{{ field(form.q, size='sm', autocomplete='off') }}</div>
+      <div class="col-6 col-md-2">{{ field(form.type, size='sm') }}</div>
+      <div class="col-6 col-md-3">{{ field(form.category, size='sm') }}</div>
+      <div class="col-6 col-md-3">{{ field(form.account, size='sm') }}</div>
+      <div class="col-6 col-md-3">{{ field(form.date_from, size='sm') }}</div>
+      <div class="col-6 col-md-3">{{ field(form.date_to, size='sm') }}</div>
+      <div class="col-12 col-md-3">{{ field(form.sort, size='sm') }}</div>
+      <div class="col-12 col-md-3 d-flex align-items-end gap-2 mb-3">
+        <button class="btn btn-brand btn-sm">Apply</button>
+        <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('transactions.index') }}">Reset</a>
+      </div>
+    </div>
+  </div>
+</form>
+
+<div class="surface">
+  {% if pagination.items %}
+  <div class="table-responsive">
+    <table class="table align-middle mb-0">
+      <thead>
+        <tr><th scope="col">Date</th><th scope="col">Description</th><th scope="col">Category</th><th scope="col">Account</th><th scope="col" class="text-end">Amount</th><th scope="col" class="text-end">Actions</th></tr>
+      </thead>
+      <tbody>
+        {% for t in pagination.items %}
+        <tr>
+          <td class="text-nowrap">{{ t.transaction_date.strftime('%d %b %Y') }}</td>
+          <td>{{ t.description or '—' }}</td>
+          <td><span class="badge cat-badge cat-{{ t.type.value }}">{{ t.category.name }}</span></td>
+          <td>{{ t.account.name }}{% if t.account.is_archived %} <span class="badge text-bg-secondary">Archived</span>{% endif %}</td>
+          <td class="text-end text-nowrap">{{ amount(t.amount, t.type.value) }}</td>
+          <td class="text-end text-nowrap">
+            {% if not t.account.is_archived %}
+            <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('transactions.edit', txn_id=t.id) }}">Edit</a>
+            {{ confirm_button(url_for('transactions.delete', txn_id=t.id),
+                              'Delete transaction?',
+                              'Delete this ' ~ t.type.value ~ ' of ' ~ (t.amount|currency) ~ ' (' ~ (t.description or t.category.name) ~ ')? This cannot be undone.',
+                              next_url=request.full_path) }}
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if pagination.pages > 1 %}<div class="surface-foot">{{ render_pagination(pagination) }}</div>{% endif %}
+  {% else %}
+  <div class="empty-state">
+    <p class="mb-3">No transactions match. Try changing the filters, or add one.</p>
+    <a class="btn btn-brand" href="{{ url_for('transactions.new') }}">Add a transaction</a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,49 @@
+{% extends "app_base.html" %}
+{% from "_macros.html" import confirm_button %}
+{% block title %}Categories{% endblock %}
+
+{% macro category_table(rows, flow) %}
+<div class="surface h-100">
+  <div class="surface-head">
+    <h2 class="surface-title">{{ 'Income' if flow == 'income' else 'Expense' }} categories</h2>
+    <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('categories.new', type=flow) }}">Add</a>
+  </div>
+  <ul class="list-group list-group-flush">
+    {% for r in rows %}
+    <li class="list-group-item d-flex align-items-center justify-content-between gap-2">
+      <div>
+        <span class="fw-semibold">{{ r.category.name }}</span>
+        {% if r.category.is_default %}<span class="badge text-bg-light border ms-1">Default</span>{% endif %}
+        <div class="small text-muted">{{ r.transaction_count }} transaction{{ '' if r.transaction_count == 1 else 's' }}</div>
+      </div>
+      {% if not r.category.is_default %}
+      <div class="d-flex gap-1">
+        <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('categories.edit', category_id=r.category.id) }}">Edit</a>
+        {% if r.transaction_count == 0 %}
+          {{ confirm_button(url_for('categories.delete', category_id=r.category.id),
+                            'Delete category?', 'Delete "' ~ r.category.name ~ '"? This cannot be undone.') }}
+        {% else %}
+          <button class="btn btn-sm btn-outline-danger" disabled
+                  title="In use by {{ r.transaction_count }} transaction(s)">Delete</button>
+        {% endif %}
+      </div>
+      {% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+</div>
+{% endmacro %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1 class="page-title">Categories</h1>
+    <p class="page-sub">Default categories are fixed. Custom ones can be edited, and deleted once unused.</p>
+  </div>
+  <a class="btn btn-brand" href="{{ url_for('categories.new') }}">New category</a>
+</div>
+<div class="row g-4">
+  <div class="col-lg-6">{{ category_table(expense, 'expense') }}</div>
+  <div class="col-lg-6">{{ category_table(income, 'income') }}</div>
+</div>
+{% endblock %}
